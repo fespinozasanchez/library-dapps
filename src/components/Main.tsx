@@ -2,15 +2,19 @@
 import data from '@/lib/data.json'
 import { type Book } from '@/interfaces/book'
 import { useEffect, useMemo, useState } from 'react'
+
 import {
   Select,
   SelectItem,
   Card,
   CardFooter,
   Image,
-  Button
+  Button,
+  Tooltip
 } from '@nextui-org/react'
+
 import { HeartIcon, PlusIcon } from './svg'
+import { useMetamask } from '@/hooks/useMetamask'
 
 const books: Book[] = data.library.map((data) => data.book)
 const genres: Array<Book['genre']> = [
@@ -21,27 +25,23 @@ const genres: Array<Book['genre']> = [
 function onReadListChange (callback: (readList: Set<string>) => void) {
   function getReadList () {
     const storedReadList = localStorage.getItem('readList')
-    if (storedReadList != null) {
-      const readList = new Set<string>(
-        JSON.parse(storedReadList) as Iterable<string>
-      ) // Specify the type as Iterable<string>
-      return readList
-    }
-    return new Set<string>() // Return an empty set of strings if there is no data
+    return storedReadList !== null
+      ? new Set<string>(JSON.parse(storedReadList) as Iterable<string>)
+      : new Set<string>()
   }
-  const readList = getReadList()
-  callback(readList)
 
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'readList') callback(getReadList())
-  })
-  getReadList()
+  const updateReadList = () => {
+    callback(getReadList())
+  }
+
+  window.addEventListener('storage', updateReadList)
+  updateReadList() // Inicializar el estado en la carga
+
   return () => {
-    window.removeEventListener('storage', (e) => {
-      if (e.key === 'readList') callback(getReadList())
-    })
+    window.removeEventListener('storage', updateReadList)
   }
 }
+
 export default function Main () {
   const [genre, setGenre] = useState<Book['genre']>('All')
   const [readList, setReadList] = useState<Set<Book['ISBN']>>(new Set())
@@ -64,28 +64,56 @@ export default function Main () {
   }
 
   useEffect(() => {
-    const unsuscribe = onReadListChange(setReadList)
+    const unsubscribe = onReadListChange(setReadList)
     return () => {
-      unsuscribe()
+      unsubscribe()
     }
   }, [])
 
+  // Connect Metamask
+  const { connectedAccount, connectMetamask } = useMetamask()
+
   return (
     <div className="grid gap-2 h-full max-h-full overflow-y-auto">
-      <Select
-        value={genre}
-        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-          setGenre(e.target.value)
-        }}
-        items={genres}
-        label="Genero"
-        placeholder="Selecciona un Genero"
-        className="max-w-xs"
-      >
-        {genres.map((genre) => (
-          <SelectItem key={genre}>{genre}</SelectItem>
-        ))}
-      </Select>
+      <div className="flex justify-between items-center w-full">
+        <Select
+          value={genre}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+            setGenre(e.target.value)
+          }}
+          items={genres}
+          label="Género"
+          placeholder="Selecciona un Género"
+          className="max-w-xs"
+        >
+          {genres.map((genre) => (
+            <SelectItem key={genre}>{genre}</SelectItem>
+          ))}
+        </Select>
+
+        <Button onPress={connectMetamask}>Connect Metamask</Button>
+      </div>
+
+      {connectedAccount != null && (
+        <Tooltip
+          key={'success'}
+          color={'success'}
+          content={`Conectado ${connectedAccount}`}
+          className="capitalize"
+        >
+          <Button
+            variant="flat"
+            color={'success'}
+            className="capitalize"
+            onClick={() => {
+              navigator.clipboard.writeText(connectedAccount)
+            }}
+          >
+            {connectedAccount}
+          </Button>
+        </Tooltip>
+      )}
+
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-2">
         {matchs?.map((book, index) => (
           <li key={book.ISBN}>

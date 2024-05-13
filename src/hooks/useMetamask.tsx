@@ -29,7 +29,7 @@ export function useMetamask () {
 
   const connectMetamask = async () => {
     if (typeof window.ethereum === 'undefined') {
-      alert('Please install MetaMask!')
+      console.error('Please install MetaMask!')
       return
     }
 
@@ -41,7 +41,6 @@ export function useMetamask () {
       )
     } catch (error) {
       console.error('Failed to connect MetaMask', error)
-      alert('Failed to connect MetaMask')
     }
   }
 

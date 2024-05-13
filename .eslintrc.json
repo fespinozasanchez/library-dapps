@@ -7,7 +7,8 @@
   "extends": [
       "next/core-web-vitals",
       "love",
-      "plugin:react/recommended"
+      "plugin:react/recommended",
+      "plugin:react-hooks/recommended"
   ],
   "parserOptions": {
       "ecmaVersion": "latest",

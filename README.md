@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Guía de Inicio Rápido para Truffle con Ganache
 
-## Getting Started
+Este documento proporciona instrucciones para configurar y ejecutar un entorno de desarrollo local para contratos inteligentes utilizando Truffle y Ganache.
 
-First, run the development server:
+## Requisitos Previos
+
+Asegúrate de tener Node.js instalado. Puedes descargarlo e instalarlo desde [Node.js official website](https://nodejs.org/).
+
+## Configuración del Proyecto
+
+Para configurar tu proyecto, sigue estos pasos:
+
+### 1. Inicializa un nuevo proyecto Node.js
+
+Abre una terminal y ejecuta el siguiente comando para crear un nuevo directorio para tu proyecto y navegar dentro de él:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+mkdir mi-proyecto-truffle
+cd mi-proyecto-truffle
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Luego, inicializa un nuevo proyecto Node.js:
+```bash
+npm init -y
+```
+### 2. Instala Truffle
+Instala Truffle globalmente en tu sistema:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install -g truffle
+```
+### 3. Inicializa Truffle en tu proyecto
+Para configurar Truffle en tu proyecto, ejecuta:
+```bash
+truffle init
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Esto creará los directorios y archivos necesarios para tu proyecto.
+### 4. Configura Ganache
+Instala Ganache globalmente:
+```bash
+npm install -g ganache
+```
+Esto proporcionará 10 cuentas de prueba y sus claves privadas, además de mucho Ether falso para usar en tus pruebas.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Desarrollo y Pruebas
+### Compilación de Contratos
+Para compilar tus contratos inteligentes, usa:
+```bash
+truffle compile
+```
+### Migración de Contratos
+Para desplegar tus contratos al blockchain de Ganache, usa:
+```bash
+truffle migrate
+```
+### Ejecutar Pruebas
+Para ejecutar pruebas escritas para tus contratos, usa:
+```bash
+truffle test
+```

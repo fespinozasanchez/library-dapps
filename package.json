@@ -11,10 +11,14 @@
   "dependencies": {
     "@nextui-org/react": "^2.3.6",
     "@openzeppelin/contracts": "^5.0.2",
+    "@truffle/contract": "^4.6.31",
+    "@types/web3": "^1.2.2",
     "framer-motion": "^11.1.9",
     "next": "14.2.3",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "web3": "^4.8.0",
+    "web3-core": "^4.3.2"
   },
   "devDependencies": {
     "@types/node": "^20",

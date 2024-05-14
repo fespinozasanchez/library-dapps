@@ -6,6 +6,8 @@ import { type Book } from '@/interfaces/book'
 import { useEffect, useMemo, useState } from 'react'
 import { DateRangePicker } from '@nextui-org/date-picker'
 import { getLocalTimeZone, parseDate, today } from '@internationalized/date'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 import {
   Select,
@@ -26,6 +28,7 @@ import {
 import { PlusIcon } from './svg'
 import { useMetamask } from '@/hooks/useMetamask'
 import { useContract } from '@/hooks/useContract'
+import { type ContractType } from '@/interfaces/IBookRentalLibrary'
 
 const books: Book[] = data.library.map((data) => data.book)
 const genres: Array<Book['genre']> = [
@@ -52,29 +55,47 @@ export default function Main () {
   }
 
   const { connectedAccount, connectMetamask } = useMetamask()
-  const [contract, setContract] = useState(null)
+  const [contract, setContract] = useState<ContractType>()
+
+  const useInit = async () => {
+    const loadedContract = await useContract()
+    if (loadedContract) {
+      setContract(loadedContract)
+    }
+  }
 
   useEffect(() => {
-    const init = async () => {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const loadedContract = await useContract()
-      if (loadedContract) {
-        setContract(loadedContract)
-      }
-    }
-
-    init()
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useInit()
   }, [])
 
   const handleRentBook = async () => {
+    // Verificar conexión con MetaMask
+    if (!connectedAccount) {
+      console.error('No MetaMask account connected.')
+      toast.error('Por favor conecta tu wallet de MetaMask.', {
+        position: 'top-left',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined
+      })
+      connectMetamask() // Función para iniciar la conexión con MetaMask
+      return
+    }
+
+    if (!contract || !selectedBook) {
+      console.error('Contract is not loaded or no book selected.')
+      return
+    }
     // connectMetamask()
     if (!contract || !selectedBook) {
       console.error('Contract is not loaded or no book selected.')
       return
     }
     const { start, end } = date
-    // Asegúrate de que 'start' y 'end' son objetos de tipo Date.
-    // Aquí asumimos que tienes métodos para convertir de CalendarDate a Date si es necesario.
     const startDate = new Date(start.year, start.month - 1, start.day)
     const endDate = new Date(end.year, end.month - 1, end.day)
 
@@ -84,16 +105,46 @@ export default function Main () {
 
     try {
       const receipt = await contract.safeMintBook(
-        connectedAccount,
+        connectedAccount ?? '',
         selectedBook.ISBN,
         PRICE,
         ENDDATE,
         STARTDATE,
-        { from: connectedAccount }
+        { from: connectedAccount ?? '' }
       )
       console.log('Transaction receipt:', receipt)
+      onOpenChange()
+      toast.success(
+        `Libro arrendado con éxito!\n- Transaction ID: ${receipt.tx}\n- Número de bloque: ${receipt.receipt.blockNumber}\n- Para: ${receipt.receipt.from}`,
+        {
+          position: 'top-left',
+          autoClose: 10000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined
+        }
+      )
     } catch (error) {
       console.error('Error calling safeMintBook:', error)
+      const errorMessage = (error as Error).message
+      const errorObj = error as Error
+      toast.error(`Error al arrendar libro: ${errorMessage}`, {
+        position: 'top-left',
+        autoClose: 10000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined
+      })
+      if ((errorObj as any).code === -32603) {
+        // Considera reconectar o revisar la conexión de MetaMask
+        console.error(
+          'Posible problema de conexión con el nodo o error en el contrato.'
+        )
+      }
     }
   }
 
@@ -124,7 +175,6 @@ export default function Main () {
 
         <Button onPress={connectMetamask}>Connect Metamask</Button>
       </div>
-
       {connectedAccount != null && (
         <Tooltip
           key={'success'}
@@ -144,7 +194,6 @@ export default function Main () {
           </Button>
         </Tooltip>
       )}
-
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-2">
         {matchs?.map((book, index) => (
           <li key={book.ISBN}>
@@ -222,6 +271,7 @@ export default function Main () {
           </li>
         ))}
       </ul>
+      <ToastContainer />
     </div>
   )
 }

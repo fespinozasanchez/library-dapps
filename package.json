@@ -13,6 +13,7 @@
     "@openzeppelin/contracts": "^5.0.2",
     "@truffle/contract": "^4.6.31",
     "@types/web3": "^1.2.2",
+    "date-fns": "^3.6.0",
     "framer-motion": "^11.1.9",
     "next": "14.2.3",
     "react": "^18",

@@ -1,7 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/strict-boolean-expressions */
 'use client'
 import data from '@/lib/data.json'
 import { type Book } from '@/interfaces/book'
 import { useEffect, useMemo, useState } from 'react'
+import { DateRangePicker } from '@nextui-org/date-picker'
+import { getLocalTimeZone, parseDate, today } from '@internationalized/date'
 
 import {
   Select,
@@ -10,11 +14,18 @@ import {
   CardFooter,
   Image,
   Button,
-  Tooltip
+  Tooltip,
+  useDisclosure,
+  ModalBody,
+  ModalFooter,
+  Modal,
+  ModalContent,
+  ModalHeader
 } from '@nextui-org/react'
 
-import { HeartIcon, PlusIcon } from './svg'
+import { PlusIcon } from './svg'
 import { useMetamask } from '@/hooks/useMetamask'
+import { useContract } from '@/hooks/useContract'
 
 const books: Book[] = data.library.map((data) => data.book)
 const genres: Array<Book['genre']> = [
@@ -22,57 +33,71 @@ const genres: Array<Book['genre']> = [
   ...Array.from(new Set(books.map((book) => book.genre)))
 ]
 
-function onReadListChange (callback: (readList: Set<string>) => void) {
-  function getReadList () {
-    const storedReadList = localStorage.getItem('readList')
-    return storedReadList !== null
-      ? new Set<string>(JSON.parse(storedReadList) as Iterable<string>)
-      : new Set<string>()
-  }
-
-  const updateReadList = () => {
-    callback(getReadList())
-  }
-
-  window.addEventListener('storage', updateReadList)
-  updateReadList() // Inicializar el estado en la carga
-
-  return () => {
-    window.removeEventListener('storage', updateReadList)
-  }
-}
-
 export default function Main () {
+  const { isOpen, onOpen, onOpenChange } = useDisclosure()
   const [genre, setGenre] = useState<Book['genre']>('All')
-  const [readList, setReadList] = useState<Set<Book['ISBN']>>(new Set())
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null)
+  const [date, setDate] = useState({
+    start: parseDate(new Date().toLocaleDateString('en-CA')),
+    end: parseDate(new Date().toLocaleDateString('en-CA'))
+  })
   const matchs = useMemo(() => {
     if (genre.length === 0 || genre === '' || genre === 'All') return books
     return books.filter((book) => book.genre === genre)
   }, [genre])
 
-  function handleBookClick (book: Book['ISBN']) {
-    const draft = new Set(readList) // Clona el conjunto para no mutar el original
-    if (draft.has(book)) {
-      draft.delete(book)
-    } else {
-      draft.add(book)
-    }
-    setReadList(draft)
-
-    // Al agregar o quitar elementos, actualiza el localStorage
-    localStorage.setItem('readList', JSON.stringify(Array.from(draft)))
+  function handleBookClick (book: Book) {
+    setSelectedBook(book)
+    onOpen()
   }
 
+  const { connectedAccount, connectMetamask } = useMetamask()
+  const [contract, setContract] = useState(null)
+
   useEffect(() => {
-    const unsubscribe = onReadListChange(setReadList)
-    return () => {
-      unsubscribe()
+    const init = async () => {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const loadedContract = await useContract()
+      if (loadedContract) {
+        setContract(loadedContract)
+      }
     }
+
+    init()
   }, [])
 
-  // Connect Metamask
-  const { connectedAccount, connectMetamask } = useMetamask()
+  const handleRentBook = async () => {
+    // connectMetamask()
+    if (!contract || !selectedBook) {
+      console.error('Contract is not loaded or no book selected.')
+      return
+    }
+    const { start, end } = date
+    const PRICE = calculatePrice(selectedBook.pages, start, end)
+    const STARTDATE = new Date(start).getTime() / 1000
+    const ENDDATE = new Date(end).getTime() / 1000
+    try {
+      const receipt = await contract.safeMintBook(
+        connectedAccount,
+        selectedBook.ISBN,
+        PRICE,
+        ENDDATE,
+        STARTDATE,
+        { from: connectedAccount }
+      )
+      console.log('Transaction receipt:', receipt)
+    } catch (error) {
+      console.error('Error calling safeMintBook:', error)
+    }
+  }
 
+  const calculatePrice = (pages, start, end) => {
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+    const diffTime = endDate.getTime() - startDate.getTime()
+    const days = diffTime / (1000 * 3600 * 24)
+    return pages * Math.round(days)
+  }
   return (
     <div className="grid gap-2 h-full max-h-full overflow-y-auto">
       <div className="flex justify-between items-center w-full">
@@ -124,6 +149,7 @@ export default function Main () {
                 className="aspect-[9/14] z-0  object-cover"
                 src={book.cover}
               />
+
               <CardFooter className="absolute bg-white/50 bottom-0 border-t-1 border-zinc-100/50 z-10 justify-between">
                 <div>
                   <p className=" text-black text-xs uppercase font-bold">
@@ -137,16 +163,56 @@ export default function Main () {
                 <Button
                   isIconOnly
                   onPress={() => {
-                    handleBookClick(book.ISBN)
+                    handleBookClick(book)
                   }}
-                  color={readList.has(book.ISBN) ? 'danger' : 'default'}
+                  color={'default'}
                   variant="shadow"
                   aria-label="add to favorite"
                 >
-                  {readList.has(book.ISBN) ? <HeartIcon /> : <PlusIcon />}
+                  {<PlusIcon />}
                 </Button>
               </CardFooter>
             </Card>
+            {selectedBook?.ISBN === book.ISBN && (
+              <Modal
+                backdrop="blur"
+                isOpen={isOpen}
+                onOpenChange={onOpenChange}
+                radius="lg"
+              >
+                <ModalContent>
+                  {(onClose) => (
+                    <>
+                      <ModalHeader className="flex flex-col gap-1">
+                        Seleccione la fecha de inicio y fin de la renta
+                      </ModalHeader>
+                      <ModalBody>
+                        <DateRangePicker
+                          label="Stay duration"
+                          isRequired
+                          value={date}
+                          minValue={today(getLocalTimeZone())}
+                          onChange={setDate}
+                          className="max-w-xs"
+                        />
+                      </ModalBody>
+                      <ModalFooter>
+                        <Button
+                          color="danger"
+                          variant="light"
+                          onPress={onClose}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button color="primary" onClick={handleRentBook}>
+                          Arrendar
+                        </Button>
+                      </ModalFooter>
+                    </>
+                  )}
+                </ModalContent>
+              </Modal>
+            )}
           </li>
         ))}
       </ul>

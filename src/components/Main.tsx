@@ -73,9 +73,15 @@ export default function Main () {
       return
     }
     const { start, end } = date
-    const PRICE = calculatePrice(selectedBook.pages, start, end)
-    const STARTDATE = new Date(start).getTime() / 1000
-    const ENDDATE = new Date(end).getTime() / 1000
+    // Asegúrate de que 'start' y 'end' son objetos de tipo Date.
+    // Aquí asumimos que tienes métodos para convertir de CalendarDate a Date si es necesario.
+    const startDate = new Date(start.year, start.month - 1, start.day)
+    const endDate = new Date(end.year, end.month - 1, end.day)
+
+    const PRICE = calculatePrice(selectedBook.pages, startDate, endDate)
+    const STARTDATE = Math.floor(startDate.getTime() / 1000)
+    const ENDDATE = Math.floor(endDate.getTime() / 1000)
+
     try {
       const receipt = await contract.safeMintBook(
         connectedAccount,
@@ -91,7 +97,7 @@ export default function Main () {
     }
   }
 
-  const calculatePrice = (pages, start, end) => {
+  const calculatePrice = (pages: number, start: Date, end: Date) => {
     const startDate = new Date(start)
     const endDate = new Date(end)
     const diffTime = endDate.getTime() - startDate.getTime()
